@@ -1,10 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
+	"net/http"
 	"os"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/wavefronthq/go-metrics-wavefront/reporting"
 	"github.com/wavefronthq/wavefront-sdk-go/application"
 	"github.com/wavefronthq/wavefront-sdk-go/senders"
+	"golang.org/x/net/html"
 )
 
 var wavefrontToken = getConfig()
@@ -59,15 +61,37 @@ func main() {
 	fmt.Println("Search wavefront: ts(\"compute.test.counter\")")
 	fmt.Println("Entering loop to simulate metrics flushing. Hit ctrl+c to cancel")
 
-	for {
-		value := rand.Int63n(16)
-		fmt.Printf("Incrementing by random value: %v\n", value)
-
-		counter.Inc(value)
-		deltaCounter.Inc(value)
-
-		time.Sleep(time.Second * 10)
+	resp, err := http.Get("https://www.worldometers.info/coronavirus/coronavirus-cases/")
+	if err != nil {
+		log.Fatal(err)
 	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	reader := bytes.NewReader(body)
+
+	z := html.NewTokenizer(reader)
+
+	for {
+		tt := z.Next()
+		if tt == html.ErrorToken {
+			log.Println("End of Parsing")
+			log.Fatal(z.Token())
+		}
+		fmt.Println(z.Token())
+	}
+	//for {
+	//	value := rand.Int63n(16)
+	//	fmt.Printf("Incrementing by random value: %v\n", value)
+	//
+	//	counter.Inc(value)
+	//	deltaCounter.Inc(value)
+	//
+	//	time.Sleep(time.Second * 10)
+	//}
 }
 
 func guardError(err error) {
@@ -80,6 +104,8 @@ func guardError(err error) {
 func getConfig() string {
 	devlog("Reading API key from file")
 	file, err := ioutil.ReadFile("config/wavefront.token")
+
+	fmt.Println(string(file))
 
 	if err != nil {
 		log.Println(err)
