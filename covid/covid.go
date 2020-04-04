@@ -83,6 +83,7 @@ func main() {
 		}
 		fmt.Println(z.Token())
 	}
+
 	//for {
 	//	value := rand.Int63n(16)
 	//	fmt.Printf("Incrementing by random value: %v\n", value)
